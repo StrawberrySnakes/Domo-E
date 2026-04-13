@@ -13,20 +13,22 @@ const COLORS = {
 };
 
 // Mood is computed purely from minutes since last pet...
-//I was gonna use images but I have an emoji attachment which is so much easier to implement
+//I was gonna use images but I do not have the energy to make them look good, so just text labels for now
 const MOOD_TIERS = [
-  { maxMinutes: 1,   key: 'excited', emoji: '🤩', label: 'Excited' },
-  { maxMinutes: 5,   key: 'happy',   emoji: '😊', label: 'Happy'   },
-  { maxMinutes: 20,  key: 'sleepy',  emoji: '😴', label: 'Sleepy'  },
-  { maxMinutes: 60,  key: 'grumpy',  emoji: '😤', label: 'Grumpy'  },
-  { maxMinutes: Infinity, key: 'hungry', emoji: '🍜', label: 'Hungry' },
+  { maxMinutes: 1,  key: 'excited', label: 'Excited', color: '#8e44ad' },
+  { maxMinutes: 5,  key: 'happy',   label: 'Happy',   color: '#27ae60' },
+  { maxMinutes: 20, key: 'sleepy',  label: 'Sleepy',  color: '#2980b9' },
+  { maxMinutes: 60, key: 'grumpy',  label: 'Grumpy',  color: '#e67e22' },
+  { maxMinutes: Infinity, key: 'hungry', label: 'Hungry', color: '#e74c3c' },
 ];
 
+// Gets the timing for mood changes, and the appropriate label/color for the current mood
 const getMoodFromLastPetted = (lastPetted) => {
   const minutes = (Date.now() - new Date(lastPetted).getTime()) / 60000;
   return MOOD_TIERS.find((tier) => minutes < tier.maxMinutes) || MOOD_TIERS[MOOD_TIERS.length - 1];
 };
 
+// Form for creating new Domos
 const MakerForm = ({ triggerReload }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -72,7 +74,7 @@ const MakerForm = ({ triggerReload }) => {
   );
 };
 
-
+// Card for displaying a single Domo, with pet and delete buttons
 const DomoCard = ({ domo, onDelete }) => {
   // lastPetted is kept in local state
   const [lastPetted, setLastPetted] = useState(domo.lastPetted);
@@ -102,6 +104,7 @@ const DomoCard = ({ domo, onDelete }) => {
   const minutesAgo = Math.floor(
     (Date.now() - new Date(lastPetted).getTime()) / 60000,
   );
+  
   const timeHint = minutesAgo < 1
     ? 'just now'
     : minutesAgo === 1
@@ -109,20 +112,23 @@ const DomoCard = ({ domo, onDelete }) => {
     : `${minutesAgo} mins ago`;
 
   const isNeglected = mood.key === 'hungry' || mood.key === 'grumpy';
+  
+  // Calculate energy percentage (100% when freshly pet, drops to 0% after 60 mins)
+  const energyPercent = Math.max(0, 100 - (minutesAgo / 60) * 100);
 
   return (
     <div
       className={`domo${isNeglected ? ' domoNeglected' : ''}`}
-      style={{ borderColor: colorInfo.hex }}
+      style={{ borderTopColor: colorInfo.hex }}
     >
       <img
         src="/assets/img/domoface.jpeg"
         alt="domo face"
         className="domoFace"
-        style={{ outline: `3px solid ${colorInfo.hex}` }}
+        style={{ border: `3px solid ${colorInfo.hex}` }}
       />
 
-      <h3 className="domoName">Name: {domo.name}</h3>
+      <h3 className="domoName">{domo.name}</h3>
       <h3 className="domoAge">Age: {domo.age}</h3>
 
       <div className="domoColorRow">
@@ -134,17 +140,30 @@ const DomoCard = ({ domo, onDelete }) => {
       </div>
 
       <div className="domoMoodRow">
-        <span className="domoMoodEmoji">{mood.emoji}</span>
-        <span className="domoMoodLabel">{mood.label}</span>
+        <span className="domoMoodBadge" style={{ backgroundColor: mood.color }}>
+          {mood.label}
+        </span>
         <span className="domoTimeHint">({timeHint})</span>
       </div>
+      
+      <div className="domoEnergyBarContainer">
+        <div 
+          className="domoEnergyBar" 
+          style={{ 
+            width: `${energyPercent}%`, 
+            backgroundColor: mood.color 
+          }} 
+        />
+      </div>
 
-      <button className="domoPet" onClick={handlePet}>Pet</button>
-
-      <button className="domoDelete" onClick={() => onDelete(domo._id)}>Remove</button>
+      <div className="domoActions">
+        <button className="domoPet" onClick={handlePet}>Pet Domo</button>
+        <button className="domoDelete" onClick={() => onDelete(domo._id)}>Delete</button>
+      </div>
     </div>
   );
 };
+
 
 const DomoList = ({ domos: initialDomos, reloadDomos }) => {
   const [domos, setDomos] = useState(initialDomos);
@@ -180,7 +199,6 @@ const DomoList = ({ domos: initialDomos, reloadDomos }) => {
     </div>
   );
 };
-
 
 const App = () => {
   const [reloadDomos, setReloadDomos] = useState(false);
